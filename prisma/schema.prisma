@@ -1,0 +1,132 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  voiceNotes VoiceNote[]
+  categories Category[]
+  tags       Tag[]
+
+  @@map("users")
+}
+
+model VoiceNote {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  originalUrl String   // URL to the original audio file
+  audioPath   String   // Local path to the processed audio file
+  duration    Int      // Duration in seconds
+  fileSize    Int      // File size in bytes
+  language    String?  // Detected language
+  transcription String? // Transcribed text
+  summary     String?  // AI-generated summary
+  keyPoints   String?  // Key points extracted by AI
+  tags        String[] // Array of tag strings
+  sentiment   String?  // Sentiment analysis
+  emotions    String?  // Emotion analysis result
+  category    String?  // Category name
+  status      NoteStatus @default(PROCESSING)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categories  Category[]
+  analyses    Analysis[]
+  embeddings  Embedding[]
+
+  @@map("voice_notes")
+}
+
+model Category {
+  id     String @id @default(cuid())
+  name   String @unique
+  color  String? // Hex color for UI
+  userId String
+
+  // Relations
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notes   VoiceNote[]
+  tags    Tag[]
+
+  @@map("categories")
+}
+
+model Tag {
+  id      String @id @default(cuid())
+  name    String
+  color   String? // Hex color for UI
+  userId  String
+
+  // Relations
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notes    VoiceNote[]
+  categories Category[]
+
+  @@map("tags")
+}
+
+model Analysis {
+  id          String   @id @default(cuid())
+  type        AnalysisType
+  result      String   // JSON string containing analysis result
+  confidence  Float?   // Confidence score (0-1)
+  processedAt DateTime @default(now())
+
+  // Relations
+  noteId String
+  note   VoiceNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@map("analyses")
+}
+
+model Embedding {
+  id        String   @id @default(cuid())
+  content   String   // The text content that was embedded
+  embedding String   // Vector embedding as JSON string
+  model     String   // The embedding model used
+  createdAt DateTime @default(now())
+
+  // Relations
+  noteId String
+  note   VoiceNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@map("embeddings")
+}
+
+enum NoteStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+  ARCHIVED
+}
+
+enum AnalysisType {
+  TRANSCRIPTION
+  SUMMARY
+  KEY_POINTS
+  SENTIMENT
+  EMOTION
+  TOPIC
+  KEYWORD_EXTRACTION
+  TRANSLATION
+  KNOWLEDGE_EXTRACTION
+}
